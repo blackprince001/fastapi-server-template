@@ -7,14 +7,14 @@ from jose import JWTError, jwt
 from app.core.config import settings
 from app.crud.users import get_user
 from app.exceptions import NotFoundException, UnauthorizedException
-from app.routes.auth.oauth_scheme import user_schema
+from app.routes.auth.oauth_scheme import user_scheme
 from app.routes.deps.database import DatabaseConnection
 from app.schemas.users import User
 
 
 async def get_authenticated_user(
     db_connection: DatabaseConnection,
-    token: str = Depends(user_schema),
+    token: str = Depends(user_scheme),
 ) -> User:
     try:
         payload = jwt.decode(
@@ -31,7 +31,7 @@ async def get_authenticated_user(
         raise UnauthorizedException()
 
     try:
-        return await get_user(user_id=user_id, db=db_connection)
+        return get_user(user_id=user_id, db=db_connection)
 
     except NotFoundException:
         raise UnauthorizedException()

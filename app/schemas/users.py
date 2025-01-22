@@ -1,32 +1,32 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserCreate(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     password: str
 
 
 class User(BaseModel):
     id: int
     name: str
-    email: str
-    password: str
+    email: EmailStr
+    hashed_password: str
     created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class UserResponse(User):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
-    email: str
+    email: EmailStr
     created_at: datetime
 
 
 class UserLoginCredential(UserCreate):
-    email: str
+    email: EmailStr
     password: str
