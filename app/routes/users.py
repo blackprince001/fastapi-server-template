@@ -1,54 +1,108 @@
 from datetime import timedelta
 from typing import List
 
-from fastapi import APIRouter, Depends, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, status
 
 from app.core.config import settings
-from app.core.security import string_matches_hashed
-from app.crud.users import create_user, get_user_by_email, get_users
-from app.exceptions import UnauthorizedException
+from app.crud.users import (
+    create_signin_code,
+    create_user,
+    get_user_by_email,
+    get_users,
+    verify_login,
+    verify_user,
+)
+from app.exceptions import InvalidVerificationCode, NotFoundException
 from app.routes.auth.jwt import create_access_token
 from app.routes.deps.auth import AuthenticatedUser
 from app.routes.deps.database import DatabaseConnection
+from app.routes.deps.verification_email_service import (
+    send_single_signon_code,
+    send_verification_email,
+)
 from app.schemas.token import Token
-from app.schemas.users import User, UserCreate, UserResponse
+from app.schemas.users import (
+    User,
+    UserCreate,
+    UserLoginCredential,
+    UserResponse,
+    UserVerifyLoginCredential,
+)
 
 router = APIRouter(prefix="/users")
 
 
 @router.post(
     "/",
-    response_model=UserResponse,
     name="Create New user with UserCreate Information",
     status_code=status.HTTP_201_CREATED,
 )
 async def create_new_user(user: UserCreate, db: DatabaseConnection):
-    return create_user(db=db, user=user)
+    db_user = get_user_by_email(db, user.email)
+    if not db_user:
+        db_user = create_user(db, user)
+
+    send_verification_email(db_user.email, db_user.verification_code)
+
+    return {"message": "Verification code sent successfully"}
 
 
 @router.post(
-    "/authenticate",
+    "/verify-signup",
+    name="Verify User with Verification Code",
+    status_code=status.HTTP_200_OK,
+)
+async def verify_user_with_code(
+    db: DatabaseConnection,
+    email: str,
+    verification_code: str,
+):
+    if verify_user(db, email, verification_code):
+        return {"message": "User verified successfully"}
+    else:
+        raise InvalidVerificationCode(
+            status_code=400, detail="Invalid verification code"
+        )
+
+
+@router.post(
+    "/login",
+    name="Log In for Single Sign On Code",
+    status_code=status.HTTP_200_OK,
+)
+async def single_sign_on(
+    db_connection: DatabaseConnection,
+    credentials: UserLoginCredential,
+):
+    db_user = get_user_by_email(db_connection, credentials.email)
+
+    if db_user is None:
+        raise NotFoundException()
+
+    create_signin_code(db_connection, db_user)
+    send_single_signon_code(db_user.email, db_user.sign_on_code)
+
+    return {"message": "Signin code sent successfully"}
+
+
+@router.post(
+    "/verify-login",
     name="Log In For Access Token",
     status_code=status.HTTP_200_OK,
 )
 async def authenticate_super_admin(
     db_connection: DatabaseConnection,
-    credentials: OAuth2PasswordRequestForm = Depends(),
+    credentials: UserVerifyLoginCredential,
 ) -> Token:
-    user = get_user_by_email(db_connection, credentials.username)
+    db_user = get_user_by_email(db_connection, credentials.email)
 
-    if user is None:
-        raise UnauthorizedException()
+    if db_user is None:
+        raise NotFoundException()
 
-    if not string_matches_hashed(
-        plain=credentials.password,
-        hashed=user.hashed_password,
-    ):
-        raise UnauthorizedException()
+    verify_login(db_connection, db_user.email, credentials.sign_on_code)
 
     access_token = create_access_token(
-        data={"sub": str(user.id)},
+        data={"sub": str(db_user.id)},
         expire_time=timedelta(minutes=settings.token_expiry_time),
     )
 

@@ -7,15 +7,19 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
-    password: str
 
 
 class User(BaseModel):
     id: int
     name: str
     email: EmailStr
-    hashed_password: str
+
     created_at: datetime
+
+    sign_on_code: str | None
+
+    verification_code: str | None
+    verification_code_expires_at: datetime | None
 
 
 class UserResponse(User):
@@ -27,6 +31,10 @@ class UserResponse(User):
     created_at: datetime
 
 
-class UserLoginCredential(UserCreate):
+class UserLoginCredential(BaseModel):
     email: EmailStr
-    password: str
+
+
+class UserVerifyLoginCredential(BaseModel):
+    email: EmailStr
+    sign_on_code: str
