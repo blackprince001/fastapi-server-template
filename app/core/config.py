@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     secret_key: str = Field(alias="SECRET_KEY")
     token_expiry_time: int = Field(alias="TOKEN_EXPIRY_TIME")
     api_version: str = Field(alias="API_VERSION")
+    email_sender: str = Field(alias="EMAIL_SENDER")
+    resend_api_key: str = Field(alias="RESEND_API_KEY")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
