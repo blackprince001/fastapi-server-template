@@ -10,6 +10,8 @@ services:
       - SECRET_KEY=ABCDE
       - TOKEN_EXPIRY_TIME=2000
       - API_VERSION=/api/v1
+      - EMAIL_SENDER=custom_format@domain
+      - RESEND_API_KEY=some_api_key
     depends_on:
       - db
 
