@@ -44,3 +44,16 @@ class NotFoundException(HTTPException):
             detail=detail,
             headers=headers,
         )
+
+
+class InvalidVerificationCode(HTTPException):
+    def __init__(
+        self,
+        detail: Any | None = None,
+        headers: dict[str, Any] | None = None,
+    ):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail,
+            headers=headers,
+        )
