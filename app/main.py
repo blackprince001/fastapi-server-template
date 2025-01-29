@@ -7,7 +7,13 @@ from app.routes.users import router as users_router
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    swagger_ui_init_oauth={
+        "clientId": "passwordless-client",
+        "scopes": "openid profile email",
+    },
+    security=[{"Bearer": []}],
+)
 
 app.add_middleware(
     CORSMiddleware,
