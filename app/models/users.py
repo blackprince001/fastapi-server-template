@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 
 from sqlalchemy import UUID as UUIDType
-from sqlalchemy import DateTime, String
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -19,13 +19,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    # security
-    verification_code: Mapped[str] = mapped_column(String, nullable=True)
-    verification_code_expires_at: Mapped[DateTime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    sign_on_code: Mapped[str] = mapped_column(String, nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # role: Mapped[UserRole] = mapped_column(
     #     Enum(UserRole, values_callable=lambda roles: [x.value for x in roles]),

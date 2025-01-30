@@ -4,15 +4,21 @@ from typing import List
 from fastapi import APIRouter, status
 
 from app.core.config import settings
-from app.crud.users import (
+from app.crud.authentication import (
+    create_authentication,
     create_signin_code,
-    create_user,
-    get_user_by_email,
-    get_users,
     verify_login,
     verify_user,
 )
-from app.exceptions import InvalidVerificationCode, NotFoundException
+from app.crud.users import (
+    get_user_by_email,
+    get_users,
+)
+from app.exceptions import (
+    AlreadyExistsException,
+    InvalidVerificationCode,
+    NotFoundException,
+)
 from app.routes.auth.jwt import create_access_token
 from app.routes.deps.auth import AuthenticatedUser
 from app.routes.deps.database import DatabaseConnection
@@ -29,7 +35,7 @@ from app.schemas.users import (
     UserVerifyLoginCredential,
 )
 
-router = APIRouter(prefix="/users")
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post(
@@ -39,10 +45,11 @@ router = APIRouter(prefix="/users")
 )
 async def create_new_user(user: UserCreate, db: DatabaseConnection):
     db_user = get_user_by_email(db, user.email)
-    if not db_user:
-        db_user = create_user(db, user)
+    if db_user:
+        raise AlreadyExistsException(detail="User with email already exists")
 
-    send_verification_email(db_user.email, db_user.verification_code)
+    auth = create_authentication(db, user.email)
+    send_verification_email(user.email, auth.verification_code)
 
     return {"message": "Verification code sent successfully"}
 
@@ -79,8 +86,8 @@ async def single_sign_on(
     if db_user is None:
         raise NotFoundException()
 
-    create_signin_code(db_connection, db_user)
-    send_single_signon_code(db_user.email, db_user.sign_on_code)
+    auth = create_signin_code(db_connection, db_user)
+    send_single_signon_code(db_user.email, auth.sign_on_code)
 
     return {"message": "Signin code sent successfully"}
 
