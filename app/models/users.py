@@ -1,3 +1,4 @@
+import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import UUID as UUIDType
@@ -15,14 +16,14 @@ class User(Base):
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
 
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
 
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    # role: Mapped[UserRole] = mapped_column(
-    #     Enum(UserRole, values_callable=lambda roles: [x.value for x in roles]),
-    #     unique=False,
-    #     default=UserRole.AGGREGATOR,
-    # )
+    role: Mapped[str] = mapped_column(String, default="common")
+    bio: Mapped[str] = mapped_column(String, nullable=True)

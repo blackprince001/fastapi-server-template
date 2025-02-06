@@ -1,7 +1,7 @@
 import base64
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import desc
@@ -56,9 +56,11 @@ def get_user_authentication_by_email(
     )
 
 
-def verify_user(db: Session, email: str, verification_code: str) -> bool:
+def verify_user(
+    db: Session, email: str, verification_code: str
+) -> Tuple[bool, Optional[User]]:
     auth = get_user_authentication_by_email(db, email)
-    if not auth:
+    if auth is None:
         return False
 
     base64_string = (
@@ -77,15 +79,43 @@ def verify_user(db: Session, email: str, verification_code: str) -> bool:
         user.is_verified = True
         db.commit()
 
-        return True
+        return True, user
 
-    return False
+    return False, None
+
+
+def verify_admin(
+    db: Session, email: str, verification_code: str
+) -> Tuple[bool, Optional[User]]:
+    auth = get_user_authentication_by_email(db, email)
+    if auth is None:
+        return False
+
+    base64_string = (
+        base64.urlsafe_b64encode(secrets.token_bytes(16)).decode("utf-8").rstrip("=")
+    )
+
+    admin_data = UserCreate(name=base64_string, email=email, role="admin")
+    admin = create_user(db, user=admin_data)
+
+    if is_verification_code_valid(
+        verification_code, auth.verification_code, auth.verification_code_expires_at
+    ):
+        auth.verification_code = None
+        auth.verification_code_expires_at = None
+
+        admin.is_verified = True
+        db.commit()
+
+        return True, admin
+
+    return False, None
 
 
 def verify_login(db: Session, email: str, sign_on_code: str) -> bool:
     auth = get_user_authentication_by_email(db, email)
 
-    if not auth:
+    if auth is None:
         return False
 
     if is_signon_code_valid(sign_on_code, auth.sign_on_code):
